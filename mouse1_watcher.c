@@ -28,6 +28,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -51,7 +52,7 @@ typedef struct {
 
 static Dev devs[MAXDEV];
 static int ndev;
-static FILE *logf;
+static FILE *g_log;
 static volatile LONG quitting;
 
 /* OS-level (what Windows thinks) state */
@@ -101,9 +102,9 @@ static void logmsg(int toConsole, const char *tag, const char *fmt, ...) {
     vsnprintf(msg, sizeof msg, fmt, ap);
     va_end(ap);
     stamp(ts, sizeof ts);
-    if (logf) {
-        fprintf(logf, "%s [%-9s] %s\n", ts, tag, msg);
-        fflush(logf);
+    if (g_log) {
+        fprintf(g_log, "%s [%-9s] %s\n", ts, tag, msg);
+        fflush(g_log);
     }
     if (toConsole) {
         printf("\r%-79s\r%s [%s] %s\n", "", ts + 11, tag, msg);
@@ -399,8 +400,8 @@ int main(void) {
     swprintf(file, 64, L"mouse1_log_%04d-%02d-%02d_%02d-%02d-%02d.txt",
              st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
     if (len + wcslen(file) < MAX_PATH) wcscat(path, file);
-    logf = _wfopen(path, L"w");
-    if (!logf) logf = _wfopen(file, L"w"); /* fall back to current folder */
+    g_log = _wfopen(path, L"w");
+    if (!g_log) g_log = _wfopen(file, L"w"); /* fall back to current folder */
 
     /* marker hotkey: first one that isn't already taken by another app */
     static const struct { UINT mod, vk; const char *name; } keys[] = {
@@ -429,7 +430,7 @@ int main(void) {
     printf("==============================================================\n");
     char up[MAX_PATH * 3];
     w2u(path, up, sizeof up);
-    printf(" Log file: %s\n\n", logf ? up : "(could not create log file!)");
+    printf(" Log file: %s\n\n", g_log ? up : "(could not create log file!)");
 
     logmsg(0, "START", "Mouse1 Watcher VERSION %s started", VERSION);
     if (markerKey) logmsg(0, "START", "Marker key: %s", markerKey);
@@ -498,6 +499,6 @@ int main(void) {
 
     logmsg(0, "STOP", "Watcher stopped. Totals: raw=%u windows=%u swallowed=%u stuck=%u phantom=%u injected=%u markers=%u",
            cRaw, cOs, cSwallowed, cStuck, cPhantom, cInjected, cMarkers);
-    if (logf) fclose(logf);
+    if (g_log) fclose(g_log);
     return 0;
 }

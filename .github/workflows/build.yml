@@ -3,7 +3,6 @@ name: Build
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -34,8 +33,19 @@ jobs:
           name: Mouse1Watcher
           path: Mouse1Watcher.zip
 
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path mouse1_watcher.c -Pattern '#define VERSION "(\d+)"').Matches[0].Groups[1].Value
+          "version=$v" >> $env:GITHUB_OUTPUT
+
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: Mouse1 Watcher v${{ steps.ver.outputs.version }}
+          body: Download Mouse1Watcher.zip below, unzip it, and run Mouse1Watcher.exe. Built automatically by GitHub Actions from the source in this repo.
           files: Mouse1Watcher.zip
+          make_latest: true
